@@ -60,6 +60,12 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.Net.Sdk.Compilers.Toolset",
+              "version": "[9.0.302, 9.0.302]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
@@ -153,6 +159,10 @@
           "assetTargetFallback": true,
           "warn": true,
           "downloadDependencies": [
+            {
+              "name": "Microsoft.Net.Sdk.Compilers.Toolset",
+              "version": "[9.0.302, 9.0.302]"
+            },
             {
               "name": "Microsoft.NETCore.App.Runtime.Mono.browser-wasm",
               "version": "[8.0.18, 8.0.18]"

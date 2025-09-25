@@ -20,3 +20,7 @@ dotnet_style_qualification_for_method = false:suggestion
 /Shared/bin
 /Api.UnitTests/bin
 /WebApp/bin
+/WebApp/obj
+/WebApp/obj
+/Api.IntegrationTests/obj
+/WebApp/obj

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Shared;
 using System.Net.Http.Json;

@@ -1,4 +1,4 @@
-namespace Api.UnitTests;
+namespace Api.IntegrationTests;
 
 public class UnitTest1
 {
