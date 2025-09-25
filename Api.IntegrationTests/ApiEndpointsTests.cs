@@ -184,5 +184,27 @@ namespace Api.IntegrationTests
             var after = await client.GetFromJsonAsync<ShowInfo>("/api/show");
             Assert.NotEqual(before.Version, after!.Version);
         }
+        [Fact]
+        public async Task Empty_customer_returns_400()
+        {
+            using var app = new WebApplicationFactory<Program>();
+            var client = app.CreateClient();
+
+            var show = await client.GetFromJsonAsync<ShowInfo>("/api/show");
+            var resp = await client.PostAsJsonAsync("/api/book", new BookingRequest("", new[] { 1 }, show!.Version));
+            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        }
+
+        [Fact]
+        public async Task Duplicate_seats_returns_400()
+        {
+            using var app = new WebApplicationFactory<Program>();
+            var client = app.CreateClient();
+
+            var show = await client.GetFromJsonAsync<ShowInfo>("/api/show");
+            var resp = await client.PostAsJsonAsync("/api/hold", new BookingRequest("u", new[] { 2, 2 }, show!.Version));
+            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        }
+
     }
 }
