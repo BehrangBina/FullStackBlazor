@@ -126,3 +126,4 @@ app.MapPost("/api/release", (BookingRequest req) =>
 });
 
 app.Run();
+public partial class Program { }
