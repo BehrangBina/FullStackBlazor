@@ -16,3 +16,5 @@ dotnet_style_qualification_for_method = false:suggestion
 /.vs
 /WebApp/obj
 /WebApp/obj
+/Api/bin
+/Shared/bin
