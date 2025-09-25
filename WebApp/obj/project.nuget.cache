@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "01njzfFLexs=",
+  "dgSpecHash": "dT7voSnlD7M=",
   "success": true,
   "projectFilePath": "E:\\work\\Training\\FullStackBlazor\\WebApp\\WebApp.csproj",
   "expectedPackageFiles": [
@@ -31,6 +31,7 @@
     "C:\\Users\\Behra\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.18\\microsoft.net.illink.tasks.8.0.18.nupkg.sha512",
     "C:\\Users\\Behra\\.nuget\\packages\\microsoft.net.sdk.webassembly.pack\\9.0.7\\microsoft.net.sdk.webassembly.pack.9.0.7.nupkg.sha512",
     "C:\\Users\\Behra\\.nuget\\packages\\system.io.pipelines\\8.0.0\\system.io.pipelines.8.0.0.nupkg.sha512",
+    "C:\\Users\\Behra\\.nuget\\packages\\microsoft.net.sdk.compilers.toolset\\9.0.302\\microsoft.net.sdk.compilers.toolset.9.0.302.nupkg.sha512",
     "C:\\Users\\Behra\\.nuget\\packages\\microsoft.netcore.app.runtime.mono.browser-wasm\\8.0.18\\microsoft.netcore.app.runtime.mono.browser-wasm.8.0.18.nupkg.sha512"
   ],
   "logs": []
