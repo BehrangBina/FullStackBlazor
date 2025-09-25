@@ -86,6 +86,24 @@ namespace Api.IntegrationTests
         }
 
         [Fact]
+        public async Task Duplicate_booking_on_same_seat_conflicts()
+        {
+            using var app = new WebApplicationFactory<Program>();
+            var client = app.CreateClient();
+
+            var show = await client.GetFromJsonAsync<ShowInfo>("/api/show");
+
+            // First booking for seat 7 should succeed
+            var first = await client.PostAsJsonAsync("/api/book", new BookingRequest("A", new[] { 7 }, show!.Version));
+            var resFirst = await first.Content.ReadFromJsonAsync<BookingResult>();
+            Assert.True(resFirst!.Success);
+
+            // Second booking for seat 7 by another user should conflict
+            var second = await client.PostAsJsonAsync("/api/book", new BookingRequest("B", new[] { 7 }, resFirst.NewVersion));
+            Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+        }
+
+        [Fact]
         public async Task Release_hold_makes_seats_available_again()
         {
             using var app = new WebApplicationFactory<Program>();
@@ -108,6 +126,29 @@ namespace Api.IntegrationTests
         }
 
         [Fact]
+        public async Task Release_by_other_user_does_not_change_status()
+        {
+            using var app = new WebApplicationFactory<Program>();
+            var client = app.CreateClient();
+
+            var show = await client.GetFromJsonAsync<ShowInfo>("/api/show");
+
+            // A holds seats 8,9
+            var holdAResp = await client.PostAsJsonAsync("/api/hold", new BookingRequest("A", new[] { 8, 9 }, show!.Version));
+            var holdA = await holdAResp.Content.ReadFromJsonAsync<BookingResult>();
+            Assert.True(holdA!.Success);
+
+            // B attempts to release A's holds -> should succeed but no change to those seats per API logic
+            var releaseBResp = await client.PostAsJsonAsync("/api/release", new BookingRequest("B", new[] { 8, 9 }, holdA.NewVersion));
+            var releaseB = await releaseBResp.Content.ReadFromJsonAsync<BookingResult>();
+            Assert.True(releaseB!.Success);
+
+            var affected = releaseB.SeatsSnapshot.Where(s => s.Number is 8 or 9).ToArray();
+            // Seats should remain Held by A
+            Assert.All(affected, s => Assert.Equal(SeatStatus.Held, s.Status));
+        }
+
+        [Fact]
         public async Task Invalid_seat_returns_bad_request()
         {
             using var app = new WebApplicationFactory<Program>();
@@ -116,6 +157,32 @@ namespace Api.IntegrationTests
             var show = await client.GetFromJsonAsync<ShowInfo>("/api/show");
             var resp = await client.PostAsJsonAsync("/api/book", new BookingRequest("X", new[] { 999 }, show!.Version));
             Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        }
+
+        [Fact]
+        public async Task Hold_invalid_seat_returns_bad_request()
+        {
+            using var app = new WebApplicationFactory<Program>();
+            var client = app.CreateClient();
+
+            var show = await client.GetFromJsonAsync<ShowInfo>("/api/show");
+            var resp = await client.PostAsJsonAsync("/api/hold", new BookingRequest("X", new[] { 999 }, show!.Version));
+            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        }
+
+        [Fact]
+        public async Task Version_changes_after_hold()
+        {
+            using var app = new WebApplicationFactory<Program>();
+            var client = app.CreateClient();
+
+            var before = await client.GetFromJsonAsync<ShowInfo>("/api/show");
+            var holdResp = await client.PostAsJsonAsync("/api/hold", new BookingRequest("V", new[] { 10 }, before!.Version));
+            var hold = await holdResp.Content.ReadFromJsonAsync<BookingResult>();
+            Assert.True(hold!.Success);
+
+            var after = await client.GetFromJsonAsync<ShowInfo>("/api/show");
+            Assert.NotEqual(before.Version, after!.Version);
         }
     }
 }
