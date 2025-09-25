@@ -9,7 +9,7 @@ builder.RootComponents.Add<App>("#app");
 
 builder.Services.AddScoped(sp => new HttpClient
 {
-    BaseAddress = new Uri("https://localhost:7001/") // adjust to your API HTTPS URL
+    BaseAddress = new Uri("http://localhost:5141/") // matches API HTTP listener
 });
 
 builder.Services.AddScoped<IApiClient, ApiClient>();
