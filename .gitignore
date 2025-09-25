@@ -22,3 +22,5 @@ dotnet_style_qualification_for_method = false:suggestion
 /WebApp/bin
 /Api.IntegrationTests/obj
 /Api.IntegrationTests/bin
+/WebApp/obj
+/WebApp/obj

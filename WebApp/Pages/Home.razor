@@ -82,37 +82,35 @@ else
         else _selected.Add(n);
     }
 
-    private async Task Hold()
-    {
-        if (!_selected.Any()) return;
-        var req = new BookingRequest(_customerId, _selected.ToArray(), _version);
-        var res = await Api.HoldAsync(req);
-        await ApplyResult(res);
-    }
-
-    private async Task Book()
-    {
-        if (!_selected.Any()) return;
-        var req = new BookingRequest(_customerId, _selected.ToArray(), _version);
-        var res = await Api.BookAsync(req);
-        await ApplyResult(res);
-    }
-
-    private async Task Release()
-    {
-        if (!_selected.Any()) return;
-        var req = new BookingRequest(_customerId, _selected.ToArray(), _version);
-        var res = await Api.ReleaseAsync(req);
-        await ApplyResult(res);
-    }
-
     private async Task ApplyResult(BookingResult res)
     {
         _message = res.Message;
         _version = res.NewVersion;
         _seats = res.SeatsSnapshot;
-        _show = await Api.GetShowAsync(); // refresh counts
+        _show = await Api.GetShowAsync();
         _selected.Clear();
         StateHasChanged();
     }
+
+    private async Task HandleAction(Func<Task<BookingResult>> action)
+    {
+        try
+        {
+            var res = await action();
+            await ApplyResult(res);
+        }
+        catch (ApiException ex)
+        {
+            _message = $"Error ({ex.StatusCode}): {ex.Message}";
+            if (ex.StatusCode == 409)
+            {
+                await Refresh();
+            }
+            StateHasChanged();
+        }
+    }
+
+    private Task Hold() => HandleAction(() => Api.HoldAsync(new BookingRequest(_customerId, _selected.ToArray(), _version)));
+    private Task Book() => HandleAction(() => Api.BookAsync(new BookingRequest(_customerId, _selected.ToArray(), _version)));
+    private Task Release() => HandleAction(() => Api.ReleaseAsync(new BookingRequest(_customerId, _selected.ToArray(), _version)));
 }

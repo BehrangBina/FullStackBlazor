@@ -43,6 +43,29 @@ Seat[] SnapshotSeats() => seats.Values.OrderBy(s => s.Number).ToArray();
 
 void BumpVersion() => version = Guid.NewGuid().ToString("N");
 
+// HELPERS
+// Helper validation
+(BookingResult? error, int? status) Validate(BookingRequest req)
+{
+    if (req is null)
+        return (new BookingResult(false, "Request body is required.", version, SnapshotSeats()), StatusCodes.Status400BadRequest);
+
+    if (string.IsNullOrWhiteSpace(req.CustomerId))
+        return (new BookingResult(false, "CustomerId is required.", version, SnapshotSeats()), StatusCodes.Status400BadRequest);
+
+    if (req.SeatNumbers is null || req.SeatNumbers.Length == 0)
+        return (new BookingResult(false, "At least one seat number is required.", version, SnapshotSeats()), StatusCodes.Status400BadRequest);
+
+    if (req.SeatNumbers.Any(n => n < 1 || n > seats.Count))
+        return (new BookingResult(false, "One or more seat numbers are out of range.", version, SnapshotSeats()), StatusCodes.Status400BadRequest);
+
+    if (req.SeatNumbers.Distinct().Count() != req.SeatNumbers.Length)
+        return (new BookingResult(false, "Duplicate seat numbers are not allowed.", version, SnapshotSeats()), StatusCodes.Status400BadRequest);
+
+    return (null, null);
+}
+
+//
 // --- Endpoints ---
 
 // health
@@ -55,14 +78,18 @@ app.MapGet("/api/show", () => Results.Ok(CurrentShowInfo()));
 app.MapGet("/api/seats", () => Results.Ok(SnapshotSeats()));
 
 // hold seats (optional pre-step; we’ll book directly too)
+// hold seats
 app.MapPost("/api/hold", (BookingRequest req) =>
 {
     lock (gate)
     {
+        var v = Validate(req);
+        if (v.error is not null) return Results.BadRequest(v.error);
+
         if (!string.IsNullOrWhiteSpace(req.ExpectedVersion) && req.ExpectedVersion != version)
             return Results.Conflict(new BookingResult(false, "Version mismatch. Refresh seats.", version, SnapshotSeats()));
 
-        foreach (var n in req.SeatNumbers.Distinct())
+        foreach (var n in req.SeatNumbers)
         {
             if (!seats.TryGetValue(n, out var seat))
                 return Results.BadRequest(new BookingResult(false, $"Seat {n} does not exist.", version, SnapshotSeats()));
@@ -70,7 +97,7 @@ app.MapPost("/api/hold", (BookingRequest req) =>
                 return Results.Conflict(new BookingResult(false, $"Seat {n} not available.", version, SnapshotSeats()));
         }
 
-        foreach (var n in req.SeatNumbers.Distinct())
+        foreach (var n in req.SeatNumbers)
         {
             var s = seats[n];
             seats[n] = s with { Status = SeatStatus.Held, HeldBy = req.CustomerId };
@@ -78,28 +105,34 @@ app.MapPost("/api/hold", (BookingRequest req) =>
         BumpVersion();
         return Results.Ok(new BookingResult(true, "Seats held.", version, SnapshotSeats()));
     }
-});
+})
+.Produces<BookingResult>(StatusCodes.Status200OK)
+.Produces<BookingResult>(StatusCodes.Status400BadRequest)
+.Produces<BookingResult>(StatusCodes.Status409Conflict);
 
 // book seats
 app.MapPost("/api/book", (BookingRequest req) =>
 {
     lock (gate)
     {
+        var v = Validate(req);
+        if (v.error is not null) return Results.BadRequest(v.error);
+
         if (!string.IsNullOrWhiteSpace(req.ExpectedVersion) && req.ExpectedVersion != version)
             return Results.Conflict(new BookingResult(false, "Version mismatch. Refresh seats.", version, SnapshotSeats()));
 
-        foreach (var n in req.SeatNumbers.Distinct())
+        foreach (var n in req.SeatNumbers)
         {
             if (!seats.TryGetValue(n, out var seat))
                 return Results.BadRequest(new BookingResult(false, $"Seat {n} does not exist.", version, SnapshotSeats()));
-            // allow booking if Available or Held by same user
+
             var ok = seat.Status == SeatStatus.Available
                      || (seat.Status == SeatStatus.Held && seat.HeldBy == req.CustomerId);
             if (!ok)
                 return Results.Conflict(new BookingResult(false, $"Seat {n} not available for booking.", version, SnapshotSeats()));
         }
 
-        foreach (var n in req.SeatNumbers.Distinct())
+        foreach (var n in req.SeatNumbers)
         {
             var s = seats[n];
             seats[n] = s with { Status = SeatStatus.Booked, HeldBy = null };
@@ -107,14 +140,21 @@ app.MapPost("/api/book", (BookingRequest req) =>
         BumpVersion();
         return Results.Ok(new BookingResult(true, "Booking confirmed.", version, SnapshotSeats()));
     }
-});
+})
+.Produces<BookingResult>(StatusCodes.Status200OK)
+.Produces<BookingResult>(StatusCodes.Status400BadRequest)
+.Produces<BookingResult>(StatusCodes.Status409Conflict);
 
-// release holds (optional)
+
+// release holds
 app.MapPost("/api/release", (BookingRequest req) =>
 {
     lock (gate)
     {
-        foreach (var n in req.SeatNumbers.Distinct())
+        var v = Validate(req);
+        if (v.error is not null) return Results.BadRequest(v.error);
+
+        foreach (var n in req.SeatNumbers)
         {
             if (!seats.TryGetValue(n, out var seat)) continue;
             if (seat.Status == SeatStatus.Held && seat.HeldBy == req.CustomerId)
@@ -123,7 +163,9 @@ app.MapPost("/api/release", (BookingRequest req) =>
         BumpVersion();
         return Results.Ok(new BookingResult(true, "Holds released.", version, SnapshotSeats()));
     }
-});
+})
+.Produces<BookingResult>(StatusCodes.Status200OK)
+.Produces<BookingResult>(StatusCodes.Status400BadRequest);
 
 app.Run();
 public partial class Program { }
