@@ -18,3 +18,5 @@ dotnet_style_qualification_for_method = false:suggestion
 /WebApp/obj
 /Api/bin
 /Shared/bin
+/Api.UnitTests/bin
+/WebApp/bin

@@ -1,7 +1,118 @@
 ﻿@page "/"
+@using Shared
+@inject IApiClient Api
 
-<PageTitle>Home</PageTitle>
+<h1>Movie Booking (20 seats)</h1>
 
-<h1>Hello, world!</h1>
+@if (_show is null)
+{
+    <p>Loading show info...</p>
+}
+else
+{
+    <p><b>@_show.MovieTitle</b> — starts @_show.StartsAt.LocalDateTime</p>
+    <p>Available: @_show.AvailableSeats / @_show.TotalSeats</p>
+}
 
-Welcome to your new app.
+@if (_seats is null)
+{
+    <p>Loading seats...</p>
+}
+else
+{
+    <div style="display:grid;grid-template-columns:repeat(10, 1fr);gap:8px;max-width:600px">
+        @foreach (var s in _seats.OrderBy(s => s.Number))
+        {
+            var color = s.Status switch
+            {
+                Shared.SeatStatus.Available => "background:#e6ffe6;",
+                Shared.SeatStatus.Held => "background:#fff5cc;",
+                Shared.SeatStatus.Booked => "background:#ffd6d6;",
+                _ => ""
+            };
+            var selected = _selected.Contains(s.Number) ? "outline:2px solid #333;" : "";
+            <button style="@($"padding:10px;{color}{selected}")" disabled="@(s.Status == Shared.SeatStatus.Booked)" @onclick="() => ToggleSeat(s.Number)">
+                @s.Number
+            </button>
+        }
+    </div>
+
+    <div style="margin-top:12px">
+        <label>Customer Id: <input @bind="_customerId" placeholder="e.g. alice@example.com" /></label>
+    </div>
+
+    <div style="margin-top:12px; display:flex; gap:8px;">
+        <button @onclick="Hold" disabled="@(!_selected.Any())">Hold</button>
+        <button @onclick="Book" disabled="@(!_selected.Any())">Book</button>
+        <button @onclick="Release" disabled="@(!_selected.Any())">Release</button>
+        <button @onclick="Refresh">Refresh</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_message))
+    {
+        <p><i>@_message</i></p>
+    }
+}
+
+@code {
+    private ShowInfo? _show;
+    private Seat[]? _seats;
+    private HashSet<int> _selected = new();
+    private string _customerId = "demo-user";
+    private string? _version;
+    private string _message = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+    }
+
+    private async Task Refresh()
+    {
+        _show = await Api.GetShowAsync();
+        _version = _show.Version;
+        _seats = await Api.GetSeatsAsync();
+        _message = "Synced.";
+        StateHasChanged();
+    }
+
+    private void ToggleSeat(int n)
+    {
+        if (_selected.Contains(n)) _selected.Remove(n);
+        else _selected.Add(n);
+    }
+
+    private async Task Hold()
+    {
+        if (!_selected.Any()) return;
+        var req = new BookingRequest(_customerId, _selected.ToArray(), _version);
+        var res = await Api.HoldAsync(req);
+        await ApplyResult(res);
+    }
+
+    private async Task Book()
+    {
+        if (!_selected.Any()) return;
+        var req = new BookingRequest(_customerId, _selected.ToArray(), _version);
+        var res = await Api.BookAsync(req);
+        await ApplyResult(res);
+    }
+
+    private async Task Release()
+    {
+        if (!_selected.Any()) return;
+        var req = new BookingRequest(_customerId, _selected.ToArray(), _version);
+        var res = await Api.ReleaseAsync(req);
+        await ApplyResult(res);
+    }
+
+    private async Task ApplyResult(BookingResult res)
+    {
+        _message = res.Message;
+        _version = res.NewVersion;
+        _seats = res.SeatsSnapshot;
+        _show = await Api.GetShowAsync(); // refresh counts
+        _selected.Clear();
+        StateHasChanged();
+    }
+}
